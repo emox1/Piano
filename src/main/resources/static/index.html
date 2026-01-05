@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>방구석 피아노</title>
+    <style>
+        body { background: #222; color: white; display: flex; flex-direction: column; align-items: center; }
+        .piano-container { width: 95%; overflow-x: auto; padding: 50px 20px; background: #1a1a1a; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .piano { display: flex; position: relative; cursor: pointer; }
+        
+        /* 흰 건반 디자인 */
+        .key.white { width: 40px; height: 200px; background: white; border: 1px solid #ccc; border-radius: 0 0 5px 5px; z-index: 1; }
+        .key.white:active, .key.white.active { background: #e0e0e0; box-shadow: inset 0 0 10px #888; }
+
+        /* 검은 건반 디자인 */
+        .key.black { width: 26px; height: 120px; background: #000; border-radius: 0 0 3px 3px; margin-left: -13px; margin-right: -13px; z-index: 2; position: relative; }
+        .key.black:active, .key.black.active { background: #333; }
+        
+        .label { position: absolute; bottom: 10px; width: 100%; text-align: center; color: #888; font-size: 10px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <h1>🎹 방구석 피아노</h1>
+    <div class="piano-container">
+        <div id="piano" class="piano"></div>
+    </div>
+
+    <script>
+        const piano = document.getElementById('piano');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 88건반 생성 (A0부터 C8까지)
+        // 검은 건반이 있는 위치 패턴 (도#, 레#, 파#, 솔#, 라#)
+        const pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]; 
+        
+        for (let i = 0; i < 88; i++) {
+            const key = document.createElement('div');
+            const noteIndex = (i + 9) % 12; // A0가 첫 번째 건반이므로 보정
+            const isBlack = pattern[noteIndex] === 1;
+            
+            key.className = `key ${isBlack ? 'black' : 'white'}`;
+            const freq = 440 * Math.pow(2, (i - 48) / 12);
+            
+            key.onmousedown = () => playNote(freq, key);
+            piano.appendChild(key);
+        }
+
+        function playNote(frequency, element) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            element.classList.add('active');
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1.5);
+            osc.stop(audioCtx.currentTime + 1.5);
+            setTimeout(() => element.classList.remove('active'), 200);
+        }
+
+        // 키보드 연주 매핑 (중간 도 부근)
+        const keyMap = {
+            // 흰 건반 (아랫줄)
+            'a': 39, // 도 (C4)
+            's': 41, // 레
+            'd': 43, // 미
+            'f': 44, // 파
+            'g': 46, // 솔
+            'h': 48, // 라
+            'j': 50, // 시
+            'k': 51, // 도 (C5)
+
+            // 검은 건반 (윗줄)
+            'w': 40, // 도#
+            'e': 42, // 레#
+            't': 45, // 파#
+            'y': 47, // 솔#
+            'u': 49  // 라#
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return; // 꾹 누르고 있을 때 소리 중복 방지
+            const key = e.key.toLowerCase();
+            const noteIdx = keyMap[key];
+            
+            if (noteIdx !== undefined) {
+                const targetKey = piano.children[noteIdx];
+                // 실제 클릭과 동일한 효과를 주기 위해 함수 호출
+                playNote(440 * Math.pow(2, (noteIdx - 48) / 12), targetKey);
+            }
+        });
+    </script>
+</body>
+</html>
